@@ -34,6 +34,8 @@ has name => (
   is   => 'ro',
   lazy => 1,
   default => sub {
+    my ($self) = @_;
+
     my @entries = grep { $_ !~ m/(^\.|^lost\+found)/ 
       && is_dir(File::Spec->catdir($self->srv_root_path, $_))
       } list_files $self->srv_root_path;
