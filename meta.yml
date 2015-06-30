@@ -1,0 +1,7 @@
+Name: Project
+Description: Project Class
+License: Apache 2.0
+Author: FILIADATA GmbH
+PerlRequire:
+  - Moose
+  - common::sense
