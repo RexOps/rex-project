@@ -121,6 +121,13 @@ has vhost => (
   required => 0,
 );
 
+has configuration_template_variables => (
+  is       => 'ro',
+  default  => sub {
+    return connection->server;
+  },
+);
+
 sub to_s {
   my ($self) = @_;
   return $self->name;
