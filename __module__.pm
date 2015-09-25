@@ -6,6 +6,7 @@
 package Project;
 
 use Moose;
+use feature 'state';
 
 
 use common::sense;
@@ -22,6 +23,19 @@ use overload
   'eq' => sub { shift->is_eq(@_); },
   'ne' => sub { shift->is_ne(@_); },
   '""' => sub { shift->to_s(@_); };
+
+
+state @app_types;
+
+# static method to register app types
+sub register_app_type {
+  my ($class, $order, $type, $code) = @_;
+  push @app_types, {
+    order => $order,
+    class => $type,
+    code  => $code,
+  };
+}
 
 has srv_root_path => (
   is => 'ro',
@@ -78,20 +92,14 @@ has application => (
   default => sub {
     my ($self) = @_;
 
-    my @php_out    = run "rpm -qa | grep php-fpm";
-    my @tomcat_out = run "rpm -qa | grep tomcat";
+    for my $app_type_c (sort { $a->{order} <=> $b->{order} } @app_types) {
+      my $ret = $app_type_c->{code}->();
+      if($ret) {
+        return $app_type_c->{class}->new(project => $self);
+      }
+    }
 
-    if(scalar @php_out >= 1) {
-      require Application::PHP::FPM;
-      return Application::PHP::FPM->new(project => $self);
-    }
-    elsif(scalar @tomcat_out >= 1) {
-      require Application::Tomcat;
-      return Application::Tomcat->new(project => $self);
-    }
-    else {
-      confess "Can't detect type of application.";
-    }
+    confess "Can't detect type of application.";
   },
 );
 
