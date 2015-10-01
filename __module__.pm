@@ -58,7 +58,7 @@ has name => (
       return $entries[0];
     }
     else {
-      die "Can't detect project name.";
+      die "Can't detect project name. There are multiple folders in " . $self->srv_root_path . "\nPlease remove them if not needed or specify the project name manually.\n";
     }
   },
 );
