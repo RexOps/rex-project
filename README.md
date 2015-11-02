@@ -37,3 +37,36 @@ package My::Project {
   extends 'Project';
 }
 ```
+
+### Overwriting Methods
+
+Most time you want to overwrite the attribute that holds the configuration variables and the base path for you services.
+
+#### srv_root_path
+
+```perl
+has srv_root_path => (
+  is => 'ro',
+  default => sub {
+    return "/srv";
+  }
+);
+```
+
+#### configuration_template_variables 
+
+
+```perl
+has configuration_template_variables => (
+  is       => 'ro',
+  default  => sub {
+    my $my_custom_variables = {
+      foo => "bar",
+      baz => "bam",
+    };
+    return $my_custom_variables;
+  },
+);
+```
+
+
