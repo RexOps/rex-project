@@ -1,5 +1,6 @@
 #
-# 
+# (c) FILIADATA GmbH
+#
 # vim: set ts=2 sw=2 tw=0:
 # vim: set expandtab:
    
@@ -95,7 +96,7 @@ has application => (
     for my $app_type_c (sort { $a->{order} <=> $b->{order} } @app_types) {
       my $ret = $app_type_c->{code}->();
       if($ret) {
-        return $app_type_c->{class}->new(project => $self);
+        return $app_type_c->{class}->new(project => $self, ( $ENV{instance_prefix} ? ( name => $ENV{instance_prefix} ) : () ));
       }
     }
 
