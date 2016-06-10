@@ -70,6 +70,7 @@ use Rex::Commands -no => [
     make
     /
 ];
+
 use Data::Dumper;
 
 use overload
@@ -104,7 +105,7 @@ has srv_root_path => (
 );
 
 has deploy_start_time => (
-  is => 'ro',
+  is      => 'ro',
   default => sub { time },
 );
 
@@ -113,6 +114,12 @@ has name => (
   lazy    => 1,
   default => sub {
     my ($self) = @_;
+
+    if ( exists $self->{__defaults__}->{project_name}
+      && $self->{__defaults__}->{project_name} )
+    {
+      return $self->{__defaults__}->{project_name};
+    }
 
     my @entries = grep {
       $_ !~ m/(^\.|^lost\+found)/
@@ -146,22 +153,16 @@ has application => (
     my ($self) = @_;
 
     for my $app_type_c ( sort { $a->{order} <=> $b->{order} } @app_types ) {
+      Rex::Logger::debug("Trying $app_type_c->{class}...");
       my $ret = $app_type_c->{code}->();
       if ($ret) {
-        return $app_type_c->{class}->new(
-          project => $self,
-          ( $ENV{instance_prefix} ? ( name => $ENV{instance_prefix} ) : () )
-        );
+        Rex::Logger::debug("Found application: $app_type_c->{class}");
+        return $app_type_c->{class}->new( project => $self, );
       }
     }
 
     confess "Can't detect type of application.";
   },
-);
-
-has vhost => (
-  is       => 'ro',
-  required => 0,
 );
 
 has configuration_template_variables => (
@@ -203,18 +204,15 @@ sub defaults {
     $self->{__defaults__} = merge( $_def, $self->{__defaults__} );
   }
   else {
-    merge(
+    $self->{__defaults__} = merge(
       $self->{__defaults__},
       {
-        instance_path =>
-          File::Spec->catdir( $self->project_path, "www", ($self->vhost || "default") ),
-        document_root_directory        => "app",
-        deploy_stash_directory         => "deploy",
-        deploy_configuration_directory => "conf",
-        data_directory                 => "shared",
-        manager_path                   => "manager",
+        project_name => undef,
+        vhost        => $ENV{vhost},
       },
     );
+    $self->{__defaults__} =
+      merge( $self->{__defaults__}, $self->application->defaults, );
   }
 }
 
@@ -234,6 +232,13 @@ sub is_ne {
   my ( $self, $comp ) = @_;
   if ( $comp ne $self->to_s ) {
     return 1;
+  }
+}
+
+sub get_configurations {
+  my ($self) = @_;
+  if ( -d "conf" ) {
+    return "conf";
   }
 }
 

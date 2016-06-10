@@ -180,7 +180,7 @@ An example Rexfile where tomcat is deployed to /mytc
 # vim: set expandtab:
 # vim: set ft=perl:
 
-use Rex -feature => ['1.4', 'tty'];
+use Rex -feature => ['1.4'];
 use Project::Tasks;
 
 Project::Tasks::defaults {

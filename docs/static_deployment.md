@@ -174,7 +174,7 @@ deployments, you can use the defaults option *linked_directories* to manage
 them.
 
 ```perl
-use Rex -feature => ['1.4', 'tty'];
+use Rex -feature => ['1.4'];
 use Project::Tasks;
 
 Project::Tasks::defaults {
@@ -189,5 +189,38 @@ This will create a directory *shared* under the path you defined with
 shared folder.
 
 If you want to use a non-default shared path you can set it with *data_path*.
+
+## Getting the deployment artifact
+
+There are multiple ways how you can retrieve the deployment artifact. In the 
+examples we imply that the artifact is somewhere stored on the local filesystem.
+But it is also possible to download the artifact from a remote webserver.
+
+For this you just need to specify the url:
+
+```bash
+rex Project:Tasks:rollout --app=http://dl.yourdomain.tld/my-app.zip --vhost=myhost.de
+```
+
+### Authentication
+
+If you need to authenticate to your download server you can define the user and
+password.
+
+```perl
+# vim: set ts=2 sw=2 tw=0:
+# vim: set expandtab:
+# vim: set ft=perl:
+
+use Rex -feature => ['1.4'];
+use Project::Tasks;
+
+Project::Tasks::defaults {
+  http_user => "the-user",
+  http_password => "the-password",
+};
+
+1;
+```
 
 
