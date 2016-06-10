@@ -104,5 +104,24 @@ to do this.
 
 
 ```perl
+package MyApplication::Instance;
 
+use Moose;
+extends qw(Application::Tomcat::Instance);
+
+require Rex::Commands;
+
+sub lb_deregister {
+  Rex::Commands::do_task("deregister_appsrv", params => { server => Rex::Commands::connection()->server });
+}
+
+sub lb_register {
+  Rex::Commands::do_task("register_appsrv", params => { server => Rex::Commands::connection()->server });
+}
+
+before [qw/app_deploy rescue/] => \&lb_deregister;
+after restart => \&lb_register;
+
+1;
 ```
+

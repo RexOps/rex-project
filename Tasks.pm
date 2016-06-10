@@ -6,14 +6,24 @@
    
 package Project::Tasks;
 
-use Rex -base;
-use Rex::Transaction;
-use Hash::Merge 'merge';
-use File::Basename qw/dirname/;
-use File::Spec;
-use Data::Dumper;
+BEGIN {
+  use Rex -base;
+  use Rex::Transaction;
+  use Hash::Merge 'merge';
+  use File::Basename qw/dirname/;
+  use File::Spec;
+  use Data::Dumper;
+  use Application::Download;
+  
+  my @new_inc;
+  for my $i (@INC) {
+    push @new_inc, $i if($i ne ".");
+  }
+  push @new_inc, ".";
+  @INC = @new_inc;
 
-require Project;
+  require Project;
+};
 
 my $defaults = {
   context => "/",
@@ -37,8 +47,23 @@ task "rollout", sub {
   my %deploy_hash = ();
   
   if(exists $params->{app}) {
+    my $download_url;
+    if($params->{app} =~ m/^https?:\/\// && $defaults->{http_user} && $defaults->{http_password}) {
+      my ( $proto, $host, $path ) = ( $params->{app} =~ m|^([^:]+)://([^/]+)(.*)$| );
+      $download_url = Application::Download::URL->new(
+        proto    => $proto,
+        host     => $host,
+        path     => $path,
+        user     => $defaults->{http_user},
+        password => $defaults->{http_password},
+      );
+    }
+    else {
+      $download_url = $params->{app};
+    }
+
     $deploy_hash{deploy_app} = [
-      $params->{app},
+      $download_url,
       ( $params->{context} ? $params->{context} : $defaults->{context} )
     ];
   }
@@ -48,15 +73,18 @@ task "rollout", sub {
   if(exists $params->{configuration}) {
     push @conf_arr, $params->{configuration};
   }
+  elsif(-d "conf") {
+    push @conf_arr, "fs://conf";
+  }
 
-  if(exists $params->{"configuration-directory"}) {
+  if(exists $params->{"configuration-directory"} && scalar @conf_arr == 1) {
     push @conf_arr, $params->{"configuration-directory"};
   }
-  else {
+  elsif(scalar @conf_arr == 1) {
     push @conf_arr, $params->{context} ? $params->{context} : "app";
   }
 
-  $deploy_hash{configure_app} = [ @conf_arr ];
+  $deploy_hash{configure_app} = [ @conf_arr ] if @conf_arr;
   
   if(exists $params->{rescue}) {
     $deploy_hash{rescue} = [
