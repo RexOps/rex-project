@@ -17,60 +17,59 @@ use Hash::Merge 'merge';
 use Rex::Commands::Fs;
 use Rex::Commands::Run;
 use Rex::Commands -no => [
-    qw/
-      no_ssh
-      desc
-      group
-      batch
-      user
-      password
-      auth
-      port
-      sudo_password
-      timeout
-      max_connect_retries
-      get_random
-      public_key
-      private_key
-      pass_auth
-      key_auth
-      krb5_auth
-      parallelism
-      proxy_command
-      set_distributor
-      template_function
-      logging
-      needs
-      include
-      environment
-      path
-      set
-      get
-      before
-      after
-      around
-      before_task_start
-      after_task_finished
-      logformat
-      log_format
-      cache
-      profiler
-      report
-      source_global_profile
-      last_command_output
-      case
-      set_executor_for
-      tmp_dir
-      inspect
-      evaluate_hostname
-      get_environment
-      get_environments
-      sayformat
-      say_format
-      make
-      /
+  qw/
+    no_ssh
+    desc
+    group
+    batch
+    user
+    password
+    auth
+    port
+    sudo_password
+    timeout
+    max_connect_retries
+    get_random
+    public_key
+    private_key
+    pass_auth
+    key_auth
+    krb5_auth
+    parallelism
+    proxy_command
+    set_distributor
+    template_function
+    logging
+    needs
+    include
+    environment
+    path
+    set
+    get
+    before
+    after
+    around
+    before_task_start
+    after_task_finished
+    logformat
+    log_format
+    cache
+    profiler
+    report
+    source_global_profile
+    last_command_output
+    case
+    set_executor_for
+    tmp_dir
+    inspect
+    evaluate_hostname
+    get_environment
+    get_environments
+    sayformat
+    say_format
+    make
+    /
 ];
-use Rex::Commands::Task;
 
 use Data::Dumper;
 
@@ -84,201 +83,206 @@ require Application::Tomcat;
 require Application::PHP::FPM;
 require Application::PHP;
 require Application::Static;
-require Application::Docker;
 
 state @app_types;
 
 # static method to register app types
 sub register_app_type {
-    my ( $class, $order, $type, $code ) = @_;
-    push @app_types,
-      {
-        order => $order,
-        class => $type,
-        code  => $code,
-      };
+  my ( $class, $order, $type, $code ) = @_;
+  push @app_types,
+    {
+    order => $order,
+    class => $type,
+    code  => $code,
+    };
 }
 
 has srv_root_path => (
-    is      => 'ro',
-    default => sub {
-        return "/srv";
-    }
+  is      => 'ro',
+  default => sub {
+    return "/srv";
+  }
 );
 
 has deploy_start_time => (
-    is      => 'ro',
-    default => sub { time },
+  is      => 'ro',
+  default => sub { time },
 );
 
 has name => (
-    is      => 'ro',
-    lazy    => 1,
-    default => sub {
-        my ($self) = @_;
+  is      => 'ro',
+  lazy    => 1,
+  default => sub {
+    my ($self) = @_;
 
-        if ( $self->defaults->{project_name} ) {
-            return $self->defaults->{project_name};
-        }
+    if ( exists $self->{__defaults__}->{project_name}
+      && $self->{__defaults__}->{project_name} )
+    {
+      return $self->{__defaults__}->{project_name};
+    }
 
-        my @entries = grep {
-            $_ !~ m/(^\.|^lost\+found)/
-              && is_dir( File::Spec->catdir( $self->srv_root_path, $_ ) )
-        } list_files $self->srv_root_path;
+    my @entries = grep {
+      $_ !~ m/(^\.|^lost\+found)/
+        && is_dir( File::Spec->catdir( $self->srv_root_path, $_ ) )
+    } list_files $self->srv_root_path;
 
-        if ( scalar @entries == 1 ) {
-            return $entries[0];
-        }
-        else {
-            die "Can't detect project name. There are multiple folders in "
-              . $self->srv_root_path
-              . "\nPlease remove them if not needed or specify the project name manually.\n";
-        }
-    },
+    if ( scalar @entries == 1 ) {
+      return $entries[0];
+    }
+    else {
+      die "Can't detect project name. There are multiple folders in "
+        . $self->srv_root_path
+        . "\nPlease remove them if not needed or specify the project name manually.\n";
+    }
+  },
 );
 
 has project_path => (
-    is      => 'ro',
-    lazy    => 1,
-    default => sub {
-        my ($self) = @_;
-        return File::Spec->catdir( $self->srv_root_path, $self->name );
-    }
+  is      => 'ro',
+  lazy    => 1,
+  default => sub {
+    my ($self) = @_;
+    return File::Spec->catdir( $self->srv_root_path, $self->name );
+  }
 );
 
 has application => (
-    is      => 'ro',
-    lazy    => 1,
-    default => sub {
-        my ($self) = @_;
+  is      => 'ro',
+  lazy    => 1,
+  default => sub {
+    my ($self) = @_;
 
-        for my $app_type_c ( sort { $a->{order} <=> $b->{order} } @app_types ) {
-            Rex::Logger::debug("Trying $app_type_c->{class}...");
-            my $ret = $app_type_c->{code}->();
-            if ($ret) {
-                Rex::Logger::debug("Found application: $app_type_c->{class}");
-                return $app_type_c->{class}->new( project => $self, );
-            }
-        }
+    for my $app_type_c ( sort { $a->{order} <=> $b->{order} } @app_types ) {
+      Rex::Logger::debug("Trying $app_type_c->{class}...");
+      my $ret = $app_type_c->{code}->();
+      if ($ret) {
+        Rex::Logger::debug("Found application: $app_type_c->{class}");
+        return $app_type_c->{class}->new( project => $self, );
+      }
+    }
 
-        confess "Can't detect type of application.";
-    },
-);
-
-has vhost => (
-    is       => 'ro',
-    required => 0,
+    confess "Can't detect type of application.";
+  },
 );
 
 has configuration_template_variables => (
-    is      => 'ro',
-    default => sub {
-        return Rex::Commands::connection()->server;
-    },
+  is      => 'ro',
+  default => sub {
+    return Rex::Commands::connection()->server;
+  },
 );
 
 #
 # important:
 # only can be called if connected to server
 has is_multi_instance => (
-    is      => 'ro',
-    lazy    => 1,
-    default => sub {
-        my ($self) = @_;
-        if ( !Rex::is_ssh() ) {
-            confess "Only can be called remotely.";
-        }
+  is      => 'ro',
+  lazy    => 1,
+  default => sub {
+    my ($self) = @_;
+    if ( !Rex::is_ssh() ) {
+      confess "Only can be called remotely.";
+    }
 
-        my @instances = $self->application->get_instances();
-        if ( scalar(@instances) > 1
-            || ref $instances[0] eq "Application::PHP::FPM::Instance" )
-        {
-            return 1;
-        }
+    my @instances = $self->application->get_instances();
+    if ( scalar(@instances) > 1
+      || ref $instances[0] eq "Application::PHP::FPM::Instance" )
+    {
+      return 1;
+    }
 
-        return 0;
-    },
+    return 0;
+  },
 );
 
 sub defaults {
-    my ( $self, $_def ) = @_;
+  my ( $self, $_def ) = @_;
 
-    $self->{__defaults__} ||= {};
+  $self->{__defaults__} ||= {};
 
-    if ($_def) {
-        $self->{__defaults__} = merge( $_def, $self->{__defaults__} );
-    }
-    else {
-        merge(
-            $self->{__defaults__},
-            {
-                project_name => undef,
-            },
-            $self->application->defaults,
-        );
-    }
+  if ($_def) {
+    $self->{__defaults__} = merge( $_def, $self->{__defaults__} );
+  }
+  else {
+    $self->{__defaults__} = merge(
+      $self->{__defaults__},
+      {
+        project_name => undef,
+        vhost        => $ENV{vhost},
+      },
+    );
+    $self->{__defaults__} =
+      merge( $self->{__defaults__}, $self->application->defaults, );
+  }
 }
 
 sub to_s {
-    my ($self) = @_;
-    return $self->name;
+  my ($self) = @_;
+  return $self->name;
 }
 
 sub is_eq {
-    my ( $self, $comp ) = @_;
-    if ( $comp eq $self->to_s ) {
-        return 1;
-    }
+  my ( $self, $comp ) = @_;
+  if ( $comp eq $self->to_s ) {
+    return 1;
+  }
 }
 
 sub is_ne {
-    my ( $self, $comp ) = @_;
-    if ( $comp ne $self->to_s ) {
-        return 1;
-    }
+  my ( $self, $comp ) = @_;
+  if ( $comp ne $self->to_s ) {
+    return 1;
+  }
+}
+
+sub get_configurations {
+  my ($self) = @_;
+  if ( -d "conf" ) {
+    return "conf";
+  }
 }
 
 sub deploy {
-    my ( $self, %param ) = @_;
+  my ( $self, %param ) = @_;
 
-    $self->pre_check_systems(%param);
+  $self->pre_check_systems(%param);
 
-    $self->prepare(%param);
+  $self->prepare(%param);
 
-    if ( exists $param{test} ) {
-        $self->test(%param);
-    }
+  if ( exists $param{test} ) {
+    $self->test(%param);
+  }
 
-    $self->switch(%param);
+  $self->switch(%param);
 
-    if ( $param{purge_inactive} ) {
-        $self->purge_inactive(%param);
-    }
+  if ( $param{purge_inactive} ) {
+    $self->purge_inactive(%param);
+  }
 }
 
 sub pre_check_systems {
-    my ( $self, %param ) = @_;
-    do_task "Project:Tasks:pre_check_systems", { %param, project => $self };
+  my ( $self, %param ) = @_;
+  do_task "Project:Tasks:pre_check_systems", { %param, project => $self };
 }
 
 sub prepare {
-    my ( $self, %param ) = @_;
-    do_task "Project:Tasks:prepare", { %param, project => $self };
+  my ( $self, %param ) = @_;
+  do_task "Project:Tasks:prepare", { %param, project => $self };
 }
 
 sub test {
-    my ( $self, %param ) = @_;
-    do_task "Project:Tasks:test", { %{ $param{test} }, project => $self };
+  my ( $self, %param ) = @_;
+  do_task "Project:Tasks:test", { %{ $param{test} }, project => $self };
 }
 
 sub switch {
-    my ( $self, %param ) = @_;
-    do_task "Project:Tasks:switch", { %param, project => $self };
+  my ( $self, %param ) = @_;
+  do_task "Project:Tasks:switch", { %param, project => $self };
 }
 
 sub purge_inactive {
-    my ( $self, %param ) = @_;
-    do_task "Project:Tasks:purge_inactive", { %param, project => $self };
+  my ( $self, %param ) = @_;
+  do_task "Project:Tasks:purge_inactive", { %param, project => $self };
 }
 
 1;
