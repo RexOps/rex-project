@@ -47,7 +47,7 @@ task "rollout", sub {
 
   set params => $params;
 
-  my %deploy_hash = %{ $params };
+  my %deploy_hash = %{$params};
 
   if ( exists $defaults->{srv_root_path} ) {
     $project_hash{srv_root_path} = $defaults->{srv_root_path};
@@ -68,8 +68,11 @@ task "rollout", sub {
 
   my $project = $defaults->{project_object}->(%project_hash);
 
-  if ( exists $params->{app} ) {
+  if ( exists $params->{app}
+    || ( $defaults->{deploy_app} && ref $defaults->{deploy_app} eq "" ) )
+  {
     my $download_url;
+    $params->{app} ||= $defaults->{deploy_app};
     if ( $params->{app} =~ m/^https?:\/\//
       && $defaults->{http_user}
       && $defaults->{http_password} )
@@ -93,24 +96,24 @@ task "rollout", sub {
       ( $params->{context} ? $params->{context} : $defaults->{context} )
     ];
   }
-  elsif(exists $defaults->{deploy_app}) {
+  elsif ( exists $defaults->{deploy_app} ) {
     $deploy_hash{deploy_app} = [
       $defaults->{deploy_app},
       ( $params->{context} ? $params->{context} : $defaults->{context} )
     ];
   }
-
   my @conf_arr;
 
   if ( exists $params->{configuration} ) {
     push @conf_arr, $params->{configuration};
   }
-  else {
+  elsif ( $project->get_configurations ) {
     push @conf_arr, $project->get_configurations;
   }
 
   $params->{"configuration-directory"} ||= $params->{"configuration_directory"};
-  $params->{"configuration-directory"} ||= $defaults->{configuration_directory} if $defaults->{configuration_directory};
+  $params->{"configuration-directory"} ||= $defaults->{configuration_directory}
+    if $defaults->{configuration_directory};
 
   if ( $params->{"configuration-directory"} && scalar @conf_arr == 1 ) {
     push @conf_arr, $params->{"configuration-directory"};
@@ -127,22 +130,38 @@ task "rollout", sub {
       ( $params->{context} ? $params->{context} : $defaults->{context} )
     ];
   }
-  elsif(exists $defaults->{rescue}) {
+  elsif ( exists $defaults->{rescue} ) {
     $deploy_hash{rescue} = $defaults->{rescue};
   }
 
   if ( exists $params->{stop} ) {
     $deploy_hash{stop} = $params->{stop};
   }
-  elsif(exists $defaults->{stop}) {
+  elsif ( exists $defaults->{stop} ) {
     $deploy_hash{stop} = $defaults->{stop};
   }
 
   if ( exists $params->{restart} ) {
     $deploy_hash{restart} = $params->{restart};
   }
-  elsif(exists $defaults->{restart}) {
+  elsif ( exists $defaults->{restart} ) {
     $deploy_hash{restart} = $defaults->{restart};
+  }
+
+  $params->{"start-before-deploy"} ||= $params->{start_before_deploy};
+  if ( $params->{"start-before-deploy"} ) {
+    $deploy_hash{start_before_deploy} = $params->{"start-before-deploy"};
+  }
+  elsif ( exists $defaults->{start_before_deploy} ) {
+    $deploy_hash{start_before_deploy} = $defaults->{start_before_deploy};
+  }
+
+  $params->{"purge-inactive"} ||= $params->{purge_inactive};
+  if ( $params->{"purge-inactive"} ) {
+    $deploy_hash{purge_inactive} = $params->{"purge-inactive"};
+  }
+  elsif ( exists $defaults->{purge_inactive} ) {
+    $deploy_hash{purge_inactive} = $defaults->{purge_inactive};
   }
 
   $params->{"deploy-lib"} ||= $params->{"deploy_lib"};
@@ -153,7 +172,7 @@ task "rollout", sub {
   if ( $params->{test} ) {
     $deploy_hash{test} = { location => $params->{test}, };
   }
-  elsif(exists $defaults->{test}) {
+  elsif ( $defaults->{test} ) {
     $deploy_hash{test} = { location => $defaults->{test} };
   }
 
@@ -352,7 +371,6 @@ task "prepare",
   if ( $param->{restart} ) {
     $instance->restart;
   }
-
   if ( $param->{test} && !$project->is_multi_instance ) {
     require Apptest::Test;
     my $test = Apptest::Test->new(
@@ -430,7 +448,7 @@ task "purge_inactive",
     }
   }
   else {
-    Rex::Logger::info( "No inactive instance found.", "warn" );
+    Rex::Logger::info( "No inactive instance found. No switch needed." );
   }
   };
 
