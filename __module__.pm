@@ -253,9 +253,7 @@ sub deploy {
     $self->test(%param);
   }
 
-  if ( $param{switch} ) {
-    $self->switch(%param);
-  }
+  $self->switch(%param);
 
   if ( $param{purge_inactive} ) {
     $self->purge_inactive(%param);
