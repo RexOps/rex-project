@@ -247,6 +247,11 @@ task "prepare",
   # (backward compatibility, tomcat must run)
   $param->{start_before_deploy} //= $application->need_start_before_deploy // 1;
 
+  # hook: before_prepare_task
+  for my $hook ( @{ $hooks->{before_prepare_task} } ) {
+    $hook->( $project, $application, $instance, $param );
+  }
+
   if ( $param->{stop} ) {
     $instance->stop;
   }
@@ -309,14 +314,14 @@ task "prepare",
 
     # hook: prepare_before_deploy_lib
     for my $hook ( @{ $hooks->{before_deploy_lib} } ) {
-      $hook->( $project, $param, $application, $instance );
+      $hook->( $project, $application, $instance, $param );
     }
 
     $instance->deploy_lib( @{ $param->{deploy_lib} } );
 
     # hook: prepare_after_deploy_lib
     for my $hook ( @{ $hooks->{after_deploy_lib} } ) {
-      $hook->( $project, $param, $application, $instance );
+      $hook->( $project, $application, $instance, $param );
     }
   }
 
@@ -329,14 +334,14 @@ task "prepare",
 
     # hook: prepare_before_deploy_app
     for my $hook ( @{ $hooks->{before_deploy_app} } ) {
-      $hook->( $project, $application, $instance );
+      $hook->( $project, $application, $instance, $param );
     }
 
     $instance->deploy_app( @{ $param->{deploy_app} } );
 
     # hook: prepare_after_deploy_app
     for my $hook ( @{ $hooks->{after_deploy_app} } ) {
-      $hook->( $project, $param, $application, $instance );
+      $hook->( $project, $application, $instance, $param );
     }
   }
 
@@ -381,6 +386,11 @@ task "prepare",
     $test->test( $param->{test} );
   }
 
+  # hook: after_prepare_task
+  for my $hook ( @{ $hooks->{after_prepare_task} } ) {
+    $hook->( $project, $application, $instance, $param );
+  }
+
   };
 
 task "test",
@@ -406,13 +416,18 @@ task "switch",
 
   my $project = $param->{project};
 
+  # hook: before_switch
+  for my $hook ( @{ $hooks->{before_switch} } ) {
+    $hook->( $project, $param );
+  }
+
   if ( $project->is_multi_instance ) {
     my $application = $project->application;
     $application->switch;
 
     # hook for multi_instance_switch
     for my $hook ( @{ $hooks->{switch_multi_instance} } ) {
-      $hook->($project);
+      $hook->($project, $param);
     }
 
   }
@@ -424,8 +439,13 @@ task "switch",
 
     # hook for single_instance_switch
     for my $hook ( @{ $hooks->{switch_single_instance} } ) {
-      $hook->($project);
+      $hook->($project, $param);
     }
+  }
+
+  # hook: after_switch
+  for my $hook ( @{ $hooks->{after_switch} } ) {
+    $hook->( $project, $param );
   }
 
   };
@@ -448,7 +468,7 @@ task "purge_inactive",
     }
   }
   else {
-    Rex::Logger::info( "No inactive instance found. No switch needed." );
+    Rex::Logger::info("No inactive instance found. No switch needed.");
   }
   };
 
