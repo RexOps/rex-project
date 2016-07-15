@@ -68,7 +68,7 @@ task "rollout", sub {
 
   my $project = $defaults->{project_object}->(%project_hash);
 
-  if ( exists $params->{app}
+  if ( (exists $params->{app} && $params->{app})
     || ( $defaults->{deploy_app} && ref $defaults->{deploy_app} eq "" ) )
   {
     my $download_url;
@@ -96,7 +96,7 @@ task "rollout", sub {
       ( $params->{context} ? $params->{context} : $defaults->{context} )
     ];
   }
-  elsif ( exists $defaults->{deploy_app} ) {
+  elsif ( exists $defaults->{deploy_app} && $defaults->{deploy_app} ) {
     $deploy_hash{deploy_app} = [
       $defaults->{deploy_app},
       ( $params->{context} ? $params->{context} : $defaults->{context} )
